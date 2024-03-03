@@ -43,7 +43,10 @@ for p in p_tags:
     name = p.xpath(".//strong/text()")
 
     # 提取邮箱地址，假定它是<a>标签的href属性中的mailto链接
-    email_addresses = p.xpath(".//span/a[contains(@href, 'mailto:')]/@href")
+    email_links = p.xpath(".//span/a[contains(@href, 'mailto:')]/@href")
+
+    # 使用正则表达式处理提取到的每个邮箱链接，去除"mailto:"
+    email_addresses = [re.sub(r'^mailto:', '', email) for email in email_links]
 
     # 如果找到了姓名和邮箱地址，则打印这些信息
     if name and email_addresses:
