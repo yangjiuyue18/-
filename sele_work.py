@@ -25,6 +25,7 @@ driver = webdriver.Chrome(service=service, options=chrome_options)
 # Официальный сайт факультета технологии программирования
 # 编程技术系官方网站
 url = "https://apmath.spbu.ru/fakultet/kafedry/18-kafedra-tekhnologii-programmirovaniya"
+# url = "https://apmath.spbu.ru/fakultet/kafedry/6-kafedra-teorii-upravleniya"
 
 # 打开网页
 # Открыть страницу
