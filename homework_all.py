@@ -6,6 +6,7 @@ from docx import Document
 import os
 from io import BytesIO
 import win32com.client
+from tika import parser
 
 def get_content_from_html(url):
     try:
@@ -51,6 +52,17 @@ def get_content_from_pdf(file_path):
         print(f"Error processing PDF: {e}")
     return {'text': text, 'images': images}
 
+def get_content_from_djvu(file_path):
+    text = []
+    images = []
+    try:
+        raw = parser.from_file(file_path)
+        text.append(raw['content'])
+        # 注意：Tika 库不支持从 DjVu 文件中提取图像
+    except Exception as e:
+        print(f"Error processing DjVu: {e}")
+    return {'text': text, 'images': images}
+
 def get_content_from_doc(file_path):
     text, images = [], []
     try:
@@ -82,7 +94,13 @@ def save_images(images, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for i, image in enumerate(images):
-        image_file_path = os.path.join(output_dir, f'image_{i}.png')
+        base_filename = f"image_{i}"
+        filename = base_filename
+        counter = 0
+        while os.path.exists(os.path.join(output_dir, filename + '.png')):
+            counter += 1
+            filename = base_filename + f"_{counter}"
+        image_file_path = os.path.join(output_dir, filename + '.png')
         image.save(image_file_path)
 
 def main(file_path, output_dir):
@@ -92,6 +110,7 @@ def main(file_path, output_dir):
         '.pdf': get_content_from_pdf,
         '.docx': get_content_from_docx,
         '.doc': get_content_from_doc,
+        '.djvu': get_content_from_djvu,
     }
 
     # 获取文件扩展名
