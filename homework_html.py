@@ -6,9 +6,6 @@ from io import BytesIO
 import PyPDF2
 from pdf2image import convert_from_path
 from docx import Document
-from docx import Document
-from PIL import Image
-from io import BytesIO
 
 def get_content_from_html(url):
     response = requests.get(url)
@@ -53,9 +50,6 @@ def get_content_from_doc(file_path):
 
     return {'text': text, 'images': images}
 
-
-from docx import Document
-from docx.shared import Inches
 
 def get_content_from_docx(file_path):
     # 提取文本
