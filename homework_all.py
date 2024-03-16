@@ -1,56 +1,82 @@
 import requests
 from bs4 import BeautifulSoup
 from PIL import Image
-from io import BytesIO
-import PyPDF2
-from pdf2image import convert_from_path
+import fitz
 from docx import Document
 import os
+from io import BytesIO
+import win32com.client
 
 def get_content_from_html(url):
     try:
         response = requests.get(url)
+        response.raise_for_status()  # Raises HTTPError for bad responses
         soup = BeautifulSoup(response.text, 'html.parser')
         text = [p.text for p in soup.find_all('p')]
         images = []
         for img in soup.find_all('img'):
             if 'src' in img.attrs:
                 img_url = img['src']
-                try:
-                    img_response = requests.get(img_url)
-                    img_data = Image.open(BytesIO(img_response.content))
-                    images.append(img_data)
-                except Exception as e:
-                    print(f"Error downloading image {img_url}: {e}")
-        return {'text': text, 'images': images}
-    except Exception as e:
-        print(f"Error processing HTML content from {url}: {e}")
-        return {'text': [], 'images': []}
+                img_response = requests.get(img_url)
+                img_response.raise_for_status()
+                img_data = Image.open(BytesIO(img_response.content))
+                images.append(img_data)
+    except requests.RequestException as e:
+        print(f"Request error: {e}")
+        text, images = [], []
+    return {'text': text, 'images': images}
 
 def get_content_from_pdf(file_path):
+    text = []
+    images = []
     try:
-        with open(file_path, 'rb') as pdf_file_obj:
-            pdf_reader = PyPDF2.PdfFileReader(pdf_file_obj)
-            text = [pdf_reader.getPage(page_num).extractText() for page_num in range(pdf_reader.numPages)]
-        images = convert_from_path(file_path)
-        return {'text': text, 'images': images}
+        doc = fitz.open(file_path)
+        for page in doc:
+            text.append(page.getText())
+            image_list = page.getImageList()
+            for img in image_list:
+                xref = img[0]
+                base = os.path.splitext(os.path.basename(file_path))[0]
+                pix = fitz.Pixmap(doc, xref)
+                if pix.n < 5:       # this is GRAY or RGB
+                    pix.writePNG(f"{base}_{xref}.png")
+                    images.append(f"{base}_{xref}.png")
+                else:               # CMYK: convert to RGB first
+                    pix1 = fitz.Pixmap(fitz.csRGB, pix)
+                    pix1.writePNG(f"{base}_{xref}.png")
+                    images.append(f"{base}_{xref}.png")
+                    pix1 = None
+                pix = None
     except Exception as e:
-        print(f"Error processing PDF content from {file_path}: {e}")
-        return {'text': [], 'images': []}
+        print(f"Error processing PDF: {e}")
+    return {'text': text, 'images': images}
+
+def get_content_from_doc(file_path):
+    text, images = [], []
+    try:
+        word = win32com.client.Dispatch("Word.Application")
+        word.visible = False
+        doc = word.Documents.Open(file_path)
+        text = [para.Range.Text for para in doc.Paragraphs]
+        # 注意：win32com 库不支持从 .doc 文件中提取图像
+        doc.Close()
+        word.Quit()
+    except Exception as e:
+        print(f"Error processing DOC: {e}")
+    return {'text': text, 'images': images}
 
 def get_content_from_docx(file_path):
+    text, images = [], []
     try:
         doc = Document(file_path)
         text = [para.text for para in doc.paragraphs]
-        images = []
         for rel in doc.part.rels.values():
             if "image" in rel.reltype:
                 image_data = rel.target_part.blob
                 images.append(Image.open(BytesIO(image_data)))
-        return {'text': text, 'images': images}
     except Exception as e:
-        print(f"Error processing DOCX content from {file_path}: {e}")
-        return {'text': [], 'images': []}
+        print(f"Error processing DOCX: {e}")
+    return {'text': text, 'images': images}
 
 def save_images(images, output_dir):
     if not os.path.exists(output_dir):
@@ -60,20 +86,32 @@ def save_images(images, output_dir):
         image.save(image_file_path)
 
 def main(file_path, output_dir):
-    _, ext = os.path.splitext(file_path)
-    function_map = {
+    # 创建一个字典，映射文件扩展名到对应的处理函数
+    handlers = {
         '.html': get_content_from_html,
         '.pdf': get_content_from_pdf,
-        '.docx': get_content_from_docx
+        '.docx': get_content_from_docx,
+        '.doc': get_content_from_doc,
     }
 
-    if ext.lower() in function_map:
-        content = function_map[ext.lower()](file_path)
-        print('Text:', content['text'])
-        print('Images:', len(content['images']))
-        save_images(content['images'], output_dir)
-    else:
+    # 获取文件扩展名
+    _, ext = os.path.splitext(file_path)
+
+    # 查找对应的处理函数
+    handler = handlers.get(ext)
+
+    if handler is None:
         print(f'Unsupported file type: {ext}')
+        return
+
+    # 调用处理函数
+    content = handler(file_path)
+
+    # 保存图像
+    save_images(content['images'], output_dir)
+
+    # 打印文本和图像数量
+    print(f"Extracted {len(content['text'])} paragraphs and {len(content['images'])} images")
 
 if __name__ == "__main__":
     file_path = input('Enter the path to the file: ')
