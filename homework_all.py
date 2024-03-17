@@ -144,8 +144,8 @@ def main(dir_path, output_dir):
         print(f"Extracted {len(content['text'])} paragraphs and {len(content['images'])} images from file: {filename}")
 
         # 打印文本内容
-        for i, paragraph in enumerate(content['text']):
-            print(f"Paragraph {i} from file {filename}: {paragraph}")
+        # for i, paragraph in enumerate(content['text']):
+        #     print(f"Paragraph {i} from file {filename}: {paragraph}")
 
 if __name__ == "__main__":
     dir_path = input('Enter the path to the directory: ')
