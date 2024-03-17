@@ -6,7 +6,6 @@ import os
 from io import BytesIO
 import win32com.client
 from tika import parser
-from urllib.parse import urljoin
 
 def get_content_from_html(file_path):
     try:
