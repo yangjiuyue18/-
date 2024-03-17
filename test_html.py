@@ -11,7 +11,7 @@ class TestGetContentFromHtml(unittest.TestCase):
 
         # 复制HTML文件到临时目录
         self.html_file_path = os.path.join(self.test_dir.name, 'test.html')
-        shutil.copy('D:\\杨天宇\\硕士\\自动数据采集和处理系统\\homework1\\test\\html_chinese.html', self.html_file_path)
+        shutil.copy('D:\\杨天宇\\硕士\\自动数据采集和处理系统\\homework1\\test\\html_all.html', self.html_file_path)
 
     def tearDown(self):
         # 删除临时目录
